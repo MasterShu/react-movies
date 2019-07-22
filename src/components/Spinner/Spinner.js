@@ -4,9 +4,8 @@ import './Spinner.css'
 const Spinner = (props) => {
   return(
     <div className="loader">
-      Spinner
     </div>
   )
-}
+};
 
 export default Spinner

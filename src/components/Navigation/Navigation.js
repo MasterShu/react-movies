@@ -1,8 +1,9 @@
 import React from 'react'
 import './Navigation.css'
 import {Link} from "react-router-dom";
+import PropTypes from "prop-types";
 
-const Navigation = (props) => {
+const Navigation = ({movie}) => {
   return (
     <div className="rmdb-navigation">
       <div className="rmdb-navigation-content">
@@ -10,10 +11,14 @@ const Navigation = (props) => {
           <p>Home</p>
         </Link>
         <p>/</p>
-        <p>{props.movie}</p>
+        <p>{movie}</p>
       </div>
     </div>
   )
-}
+};
+
+Navigation.propTypes = {
+  movie: PropTypes.string
+};
 
 export default Navigation

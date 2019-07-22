@@ -17,10 +17,17 @@ class Movie extends React.Component{
   };
   
   componentDidMount() {
+    const stateStorage = localStorage.getItem(`movie_${this.props.match.params.movieId}`)
+    if (stateStorage) {
+      const state = JSON.parse(stateStorage)
+      this.setState({...state})
+    } else {
+    
     this.setState({loading: true})
     // finish fetch the movie
     const endpoint = `${API_URL}movie/${this.props.match.params.movieId}?api_key=${API_KEY}&language=en-US`
     this.fetchItem(endpoint)
+    }
   }
   
   fetchItem = (endpoint) => {
@@ -41,6 +48,8 @@ class Movie extends React.Component{
                   actors: result.cast,
                   directors: directors,
                   loading: false
+                }, () => {
+                  localStorage.setItem(`movie_${this.props.match.params.movieId}`, JSON.stringify(this.state))
                 })
               })
           })
@@ -50,27 +59,29 @@ class Movie extends React.Component{
   };
   
   render() {
+    const {movie, actors, directors, loading} = this.state;
+    const { location } = this.props;
     return (
       <div className="rmdb-movie">
-        {this.state.movie ?
+        {movie ?
           <div>
-            <Navigation movie={this.props.location.movieName} />
-            <MovieInfo movie={this.state.movie} directors={this.state.directors} />
-            <MovieInfoBar time={this.state.movie.runtime} budget={this.state.movie.budget} revenue={this.state.movie.revenue} />
+            <Navigation movie={location.movieName} />
+            <MovieInfo movie={movie} directors={directors} />
+            <MovieInfoBar time={movie.runtime} budget={movie.budget} revenue={movie.revenue} />
           </div>
           : null}
-        {this.state.actors ?
+        {actors ?
           <div className="rmdb-movie-grid">
             <FourColGrid header={'Actors'}>
-              {this.state.actors.map((item, i) => {
+              {actors.map((item, i) => {
                 return <Actor key={i} actor={item}/>
               })}
             </FourColGrid>
           </div>
           : null
         }
-        {!this.state.actors && !this.state.loading ? <h1>Oh! We can't find movie.</h1> : null}
-        {this.state.loading ? <Spinner/> : null}
+        {!actors && !loading ? <h1>Oh! We can't find movie.</h1> : null}
+        {loading ? <Spinner/> : null}
       </div>
     )
   }

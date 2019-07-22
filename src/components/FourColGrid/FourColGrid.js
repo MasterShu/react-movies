@@ -1,5 +1,6 @@
 import React from 'react'
 import './FourColGrid.css'
+import PropTypes from "prop-types";
 
 const FourColGrid = (props) => {
   const renderElements = () => {
@@ -20,6 +21,11 @@ const FourColGrid = (props) => {
       </div>
     </div>
   )
-}
+};
+
+FourColGrid.prototype = {
+  head: PropTypes.string,
+  loading: PropTypes.bool.isRequired
+};
 
 export default FourColGrid
