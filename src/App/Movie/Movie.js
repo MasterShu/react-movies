@@ -30,32 +30,31 @@ class Movie extends React.Component{
     }
   }
   
-  fetchItem = (endpoint) => {
-    fetch(endpoint)
-      .then(result => result.json())
-      .then(result => {
-        if (result.status_code) {
-          this.setState({loading: false})
-        } else {
-          this.setState({movie: result}, () => {
-            // then fetch actors in the setState callback function
-            const endpoint = `${API_URL}movie/${this.props.match.params.movieId}/credits?api_key=${API_KEY}`
-            fetch(endpoint)
-              .then(result=> result.json())
-              .then(result => {
-                const directors = result.crew.filter((member) => member.job === 'Director')
-                this.setState({
-                  actors: result.cast,
-                  directors: directors,
-                  loading: false
-                }, () => {
-                  localStorage.setItem(`movie_${this.props.match.params.movieId}`, JSON.stringify(this.state))
-                })
-              })
+  fetchItem = async endpoint => {
+    const {movieId} = this.props.match.params.movieId
+    try {
+      const result = await (await fetch(endpoint)).json();
+      if (result.status_code) {
+        // If we don't find any movie
+        this.setState({loading: false})
+      } else {
+        this.setState({movie: result}, async () => {
+          // then fetch actors in the setState callback function
+          const endpoint = `${API_URL}movie/${this.props.match.params.movieId}/credits?api_key=${API_KEY}`;
+          const creditsResult = await (await fetch(endpoint)).json();
+          const directors = creditsResult.crew.filter((member) => member.job === 'Director');
+          this.setState({
+            actors: creditsResult.cast,
+            directors: directors,
+            loading: false
+          }, () => {
+            localStorage.setItem(`movie_${movieId}`, JSON.stringify(this.state))
           })
-        }
-      })
-      .catch(error => console.error('Error: ', error))
+        })
+      }
+    } catch(error) {
+      console.error('Error: ', error)
+    }
   };
   
   render() {
