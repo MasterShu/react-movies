@@ -4,7 +4,7 @@ import PropTypes from "prop-types";
 
 const LoadMoreBtn = ({onclick, text}) => {
   return(
-    <div className="rmdb-loadmorebtn" onClick={onclick}>
+    <div className="rmdb-loadmorebtn" onClick={() => onclick(true)}>
       <p>{text}</p>
     </div>
   )

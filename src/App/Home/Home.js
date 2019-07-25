@@ -24,8 +24,7 @@ class Home extends Component{
       this.setState({...state})
     } else {
       this.setState({loading: true});
-      const endpoint = `${API_URL}movie/popular?api_key=${API_KEY}&language=en-US&page=1`
-      this.fetchItems(endpoint)
+      this.fetchItems(this.buildEndpoint('movie/popular'))
     }
   }
   
@@ -39,7 +38,7 @@ class Home extends Component{
                        title={heroImage.original_title}
                        text={heroImage.overview}
             />
-            <SearchBar callback={this.searchItems}/>
+            <SearchBar callback={this.updateItems}/>
           </div> : null }
         <div className="rmdb-home-grid">
           <FourColGrid
@@ -59,40 +58,13 @@ class Home extends Component{
           {loading ? <Spinner/> : null}
           {(currentPage <= totalPages && !loading) ?
             <LoadMoreBtn
-              onclick={this.loadMoreItem}
+              onclick={this.updateItems}
               text="load more"
             />
           : null }
         </div>
       </div>
     )
-  }
-  
-  searchItems = (searchTerm) => {
-    let endpoint = '';
-    this.setState({
-      movies: [],
-      loading: true,
-      searchTerm
-    })
-    if (this.state.searchTerm === '') {
-      endpoint = `${API_URL}movie/popular?api_key=${API_KEY}&language=en-US&page=1}`
-    } else {
-      endpoint = `${API_URL}search/movie?api_key=${API_KEY}&language=en-US&query=${this.state.searchTerm}}`
-    }
-    this.fetchItems(endpoint)
-  }
-  
-  loadMoreItem = () => {
-    let endpoint = '';
-    this.setState({loading: true});
-    
-    if (this.state.searchTerm === '') {
-      endpoint = `${API_URL}movie/popular?api_key=${API_KEY}&language=en-US&page=${this.state.currentPage+1}`
-    } else {
-      endpoint = `${API_URL}search/movie?api_key=${API_KEY}&language=en-US&query=${this.state.searchTerm}&page=${this.state.currentPage+1}`
-    }
-    this.fetchItems(endpoint)
   }
   
   fetchItems = async endpoint => {
@@ -110,6 +82,26 @@ class Home extends Component{
       }
     })
   };
+  
+  updateItems = (loadMore, searchTerm) => {
+    this.setState({
+      movies: loadMore? [...this.state.movies]: [],
+      loading: true,
+      searchTerm: loadMore? this.state.searchTerm : searchTerm
+    }, () =>{
+      this.fetchItems(
+        !this.state.searchTerm ?
+          this.buildEndpoint('movie/popular', loadMore) :
+          this.buildEndpoint('search/movie', loadMore, this.state.searchTerm)
+      )
+    })
+  };
+  
+  buildEndpoint = (type,　loadMore=false, searchItem='') => {
+    return `${API_URL}${type}?api_key=${API_KEY}&language=en-US&page=${
+      loadMore && this.state.currentPage + 1}&query=${searchItem}
+      `
+  }
 }
 
 export default Home
