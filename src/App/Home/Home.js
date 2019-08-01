@@ -1,4 +1,4 @@
-import React, { Component } from 'react'
+import React, { useState, useEffect } from 'react'
 import './Home.css'
 import HeroImage from "../../components/HeroImage/HeroImage";
 import SearchBar from "../../components/SearchBar/SearchBar";
@@ -8,100 +8,111 @@ import LoadMoreBtn from "../../components/LoadMoreBtn/LoadMoreBtn";
 import {API_KEY, API_URL, BACKDROP_SIZE, IMAGE_BASE_URL, POSTER_SIZE} from "../../config";
 import MovieThumb from "../../components/MovieThumb/MovieThumb";
 
-class Home extends Component{
-  state = {
-    movies: [],
-    heroImage: null,
-    loading: false,
-    currentPage: 0,
-    totalPages: 0,
-    searchTerm: '',
-  };
+const Home = () =>  {
+  const [state, setState] = useState({movies: []});
+  const [isLoading, setIsLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
   
-  componentDidMount() {
-    if (localStorage.getItem('HomeState')) {
-      const state = JSON.parse(localStorage.getItem('HomeState'))
-      this.setState({...state})
-    } else {
-      this.setState({loading: true});
-      this.fetchItems(this.buildEndpoint('movie/popular'))
+  const fetchItems = async endpoint => {
+    setIsError(false);
+    
+    try {
+      const result = await (await fetch(endpoint)).json();
+      setState(prev => ({
+        ...prev,
+        movies: [...prev.movies, ...result.results],
+        heroImage: prev.heroImage || result.results[0],
+        currentPage: result.page,
+        totalPages: result.total_pages
+      }))
+    } catch (e) {
+      setIsError(true)
     }
-  }
+    setIsLoading(false);
+    
+  };
   
-  render() {
-    const {movies, heroImage, loading, currentPage, totalPages, searchTerm} = this.state;
-    return (
-      <div className="rmdb-home">
-        {heroImage ?
-          <div>
-            <HeroImage image={`${IMAGE_BASE_URL}${BACKDROP_SIZE}${heroImage.backdrop_path}`}
-                       title={heroImage.original_title}
-                       text={heroImage.overview}
-            />
-            <SearchBar callback={this.updateItems}/>
-          </div> : null }
-        <div className="rmdb-home-grid">
-          <FourColGrid
-            header={searchTerm ? 'Searched Result' : 'Popular Movies'}
-            loading={loading}
-          >
-            {movies.map((item, i) => {
-              return <MovieThumb
-                key={i}
-                clickable={true}
-                image={item.poster_path ? `${IMAGE_BASE_URL}${POSTER_SIZE}${item.poster_path}` : './images/no_image.jpg'}
-                movieId={item.id}
-                movieName={item.original_title}
-              />
-            })}
-          </FourColGrid>
-          {loading ? <Spinner/> : null}
-          {(currentPage <= totalPages && !loading) ?
-            <LoadMoreBtn
-              onclick={this.updateItems}
-              text="load more"
-            />
-          : null }
-        </div>
-      </div>
+  const updateItems = (loadMore, searchTerm) => {
+    setIsLoading(true);
+    let nowMovies, nowSearchTerm;
+    if (loadMore) {
+      nowMovies = state.movies;
+      nowSearchTerm = state.searchTerm
+    } else {
+      nowMovies = [];
+      nowSearchTerm = searchTerm
+    }
+    setState(prev => ({
+      ...prev,
+      movies: nowMovies,
+      searchTerm: nowSearchTerm
+    }));
+    fetchItems(
+    !nowSearchTerm ?
+      buildEndpoint('movie/popular', loadMore) :
+      buildEndpoint('search/movie', loadMore, nowSearchTerm)
     )
-  }
-  
-  fetchItems = async endpoint => {
-    const {movies, heroImage, searchTerm} = this.state
-    const result = await (await fetch(endpoint)).json()
-    this.setState({
-      movies: [...movies, ...result.results],
-      heroImage: heroImage || result.results[0],
-      loading: false,
-      currentPage: result.page,
-      totalPages: result.total_pages
-    }, () => {
-      if (searchTerm === '') {
-        localStorage.setItem('HomeState', JSON.stringify(this.state))
-      }
-    })
   };
   
-  updateItems = (loadMore, searchTerm) => {
-    this.setState({
-      movies: loadMore? [...this.state.movies]: [],
-      loading: true,
-      searchTerm: loadMore? this.state.searchTerm : searchTerm
-    }, () =>{
-      this.fetchItems(
-        !this.state.searchTerm ?
-          this.buildEndpoint('movie/popular', loadMore) :
-          this.buildEndpoint('search/movie', loadMore, this.state.searchTerm)
-      )
-    })
-  };
-  
-  buildEndpoint = (type,　loadMore=false, searchItem='') => {
+  const buildEndpoint = (type,　loadMore=false, searchItem='') => {
     return `${API_URL}${type}?api_key=${API_KEY}&language=en-US&page=${
-      loadMore && this.state.currentPage + 1}&query=${searchItem}
+      loadMore && state.currentPage + 1}&query=${searchItem}
       `
-  }
-}
+  };
+  
+  // Run once on mount
+  useEffect(() => {
+    if (sessionStorage.getItem('HomeState')) {
+      const persistedState = JSON.parse(sessionStorage.getItem('HomeState'))
+      setState({...persistedState})
+    } else {
+      const endpoint = buildEndpoint('movie/popular');
+      fetchItems(endpoint);
+    }
+  }, [ ]);
+  
+  useEffect(() => {
+    if (!state.searchTerm) {
+      sessionStorage.setItem('HomeState', JSON.stringify(state))
+    }
+  }, [state]);
+  
+  
+  return (
+    <div className="rmdb-home">
+      {state.heroImage && !state.searchTerm?
+        <div>
+          <HeroImage image={`${IMAGE_BASE_URL}${BACKDROP_SIZE}${state.heroImage.backdrop_path}`}
+                     title={state.heroImage.original_title}
+                     text={state.heroImage.overview}
+          />
+        </div> : null }
+      <SearchBar callback={updateItems}/>
+      <div className="rmdb-home-grid">
+        <FourColGrid
+          header={state.searchTerm ? 'Searched Result' : 'Popular Movies'}
+          loading={isLoading}
+        >
+          {state.movies.map((item, i) => {
+            return <MovieThumb
+              key={i}
+              clickable={true}
+              image={item.poster_path ? `${IMAGE_BASE_URL}${POSTER_SIZE}${item.poster_path}` : './images/no_image.jpg'}
+              movieId={item.id}
+              movieName={item.original_title}
+            />
+          })}
+        </FourColGrid>
+        {isLoading ? <Spinner/> : null}
+        {(state.currentPage <= state.totalPages && !isLoading) ?
+          <LoadMoreBtn
+            onclick={updateItems}
+            text="load more"
+          />
+        : null }
+      </div>
+    </div>
+  )
+};
 
 export default Home
